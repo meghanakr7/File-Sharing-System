@@ -50,32 +50,33 @@ public class FileClient {
     private static void uploadFile(Scanner scanner) {
         System.out.print("Enter the file path to upload: ");
         String filePath = scanner.nextLine();
-
+    
         try (Socket socket = new Socket(SERVER_HOST, SERVER_PORT);
              DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
              FileInputStream fis = new FileInputStream(filePath)) {
-
+    
             // Send upload request
             dos.writeUTF("upload");
-
+    
             File file = new File(filePath);
             String fileName = file.getName();
-
-            dos.writeUTF(fileName); // Send file name to the server
-
+    
+            // Send file name to the server
+            dos.writeUTF(fileName);
+    
+            // Send the file content to the server
             byte[] buffer = new byte[4096];
             int bytesRead;
-
-            // Read the file and send it to the server
             while ((bytesRead = fis.read(buffer)) > 0) {
                 dos.write(buffer, 0, bytesRead);
             }
-
+    
             System.out.println("File " + fileName + " uploaded successfully.");
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
+    
 
   // Method to handle file download
 private static void downloadFile(Scanner scanner) {
