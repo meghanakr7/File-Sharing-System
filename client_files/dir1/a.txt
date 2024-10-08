@@ -1,0 +1,2 @@
+Contents of a.txt
+Contents of a.txt only

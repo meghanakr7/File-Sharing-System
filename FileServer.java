@@ -30,6 +30,9 @@ public class FileServer {
                         case "list":
                             listDirectory(dis, dos);  // Handle directory listing
                             break;
+                        case "remove":
+                            removeFile(dis, dos);  // Handle removing files
+                        break;
                         default:
                             dos.writeUTF("Unknown action");
                             break;
@@ -111,4 +114,26 @@ private static void sendFile(DataInputStream dis, DataOutputStream dos) throws I
             System.err.println("Directory " + dir.getPath() + " does not exist.");
         }
     }
+
+    // Method to handle file removal
+private static void removeFile(DataInputStream dis, DataOutputStream dos) throws IOException {
+    String fileName = dis.readUTF();  // Read file name (or path) requested by client
+    File file = new File(BASE_DIRECTORY, fileName);  // Ensure it's in 'server_files'
+
+    if (file.exists() && file.isFile()) {
+        if (file.delete()) {
+            dos.writeUTF("File deleted successfully.");  // File was successfully deleted
+            System.out.println("File " + fileName + " deleted from server.");
+        } else {
+            dos.writeUTF("File could not be deleted.");  // Failed to delete the file
+            dos.writeInt(1);  // Send non-zero error code
+            System.err.println("Failed to delete file " + fileName);
+        }
+    } else {
+        dos.writeUTF("File not found");  // File does not exist
+        dos.writeInt(1);  // Send non-zero error code
+        System.err.println("File " + fileName + " does not exist.");
+    }
+}
+
 }

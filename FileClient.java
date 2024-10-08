@@ -16,7 +16,8 @@ public class FileClient {
             System.out.println("1. Upload a file");
             System.out.println("2. Download a file");
             System.out.println("3. List directory contents");
-            System.out.println("4. Exit");
+            System.out.println("4. Remove file from server");
+            System.out.println("5. Exit");
             System.out.print("Enter your choice (1-4): ");
             action = scanner.nextLine();
 
@@ -31,6 +32,9 @@ public class FileClient {
                     listDirectory(scanner);
                     break;
                 case "4":
+                    removeFile(scanner);
+                    break;
+                case "5":
                     System.out.println("Exiting...");
                     action = "exit";
                     break;
@@ -136,4 +140,30 @@ private static void downloadFile(Scanner scanner) {
             e.printStackTrace();
         }
     }
+
+    // Method to handle file removal
+private static void removeFile(Scanner scanner) {
+    System.out.print("Enter the relative file path to remove (within 'server_files', e.g., 'subdir/file.txt'): ");
+    String fileName = scanner.nextLine();
+
+    try (Socket socket = new Socket(SERVER_HOST, SERVER_PORT);
+         DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+         DataInputStream dis = new DataInputStream(socket.getInputStream())) {
+
+        // Send remove request
+        dos.writeUTF("remove");
+        dos.writeUTF(fileName);  // Send file name to the server
+
+        String serverResponse = dis.readUTF();  // Read server's response
+        if ("File deleted successfully.".equals(serverResponse)) {
+            System.out.println(serverResponse);
+        } else {
+            int errorCode = dis.readInt();  // Get error code if deletion fails
+            System.err.println("Error: " + serverResponse + ". Error code: " + errorCode);
+        }
+    } catch (IOException e) {
+        e.printStackTrace();
+    }
+}
+
 }
