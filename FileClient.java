@@ -17,7 +17,8 @@ public class FileClient {
             System.out.println("2. Download a file");
             System.out.println("3. List directory contents");
             System.out.println("4. Remove file from server");
-            System.out.println("5. Exit");
+            System.out.println("5. Shutdown file from server");
+            System.out.println("6. Exit");
             System.out.print("Enter your choice (1-4): ");
             action = scanner.nextLine();
 
@@ -35,6 +36,9 @@ public class FileClient {
                     removeFile(scanner);
                     break;
                 case "5":
+                    shutdownServer();
+                    break;
+                case "6":
                     System.out.println("Exiting...");
                     action = "exit";
                     break;
@@ -162,6 +166,23 @@ private static void removeFile(Scanner scanner) {
             int errorCode = dis.readInt();  // Get error code if deletion fails
             System.err.println("Error: " + serverResponse + ". Error code: " + errorCode);
         }
+    } catch (IOException e) {
+        e.printStackTrace();
+    }
+}
+// Method to handle server shutdown request
+private static void shutdownServer() {
+    try (Socket socket = new Socket(SERVER_HOST, SERVER_PORT);
+         DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+         DataInputStream dis = new DataInputStream(socket.getInputStream())) {
+
+        // Send shutdown request
+        dos.writeUTF("shutdown");
+
+        // Read server's response
+        String serverResponse = dis.readUTF();
+        System.out.println(serverResponse);
+
     } catch (IOException e) {
         e.printStackTrace();
     }

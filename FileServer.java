@@ -6,21 +6,40 @@ public class FileServer {
 
     private static final int PORT = 5001; // Define the port number
     private static final String BASE_DIRECTORY = "server_files"; // Base directory for the server
+    private static boolean isRunning = true;  // Control server loop
+    private static ServerSocket serverSocket;  // Make this accessible for shutdown
 
     public static void main(String[] args) {
-        try (ServerSocket serverSocket = new ServerSocket(PORT)) {
+        try {
+            serverSocket = new ServerSocket(PORT);
             System.out.println("Server is listening on port " + PORT);
 
-            while (true) {
-                Socket socket = serverSocket.accept();
-                System.out.println("New client connected");
+            while (isRunning) {
+                try {
+                    Socket socket = serverSocket.accept();
+                    System.out.println("New client connected");
 
-                // Handle each client connection in a separate thread
-                ClientHandler clientHandler = new ClientHandler(socket);
-                new Thread(clientHandler).start();  // Start the client handler in a new thread
+                    // Handle each client connection in a separate thread
+                    ClientHandler clientHandler = new ClientHandler(socket);
+                    new Thread(clientHandler).start();  // Start the client handler in a new thread
+                } catch (IOException e) {
+                    if (!isRunning) {
+                        System.out.println("Server has been shut down.");
+                    } else {
+                        e.printStackTrace();
+                    }
+                }
             }
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
+            if (serverSocket != null && !serverSocket.isClosed()) {
+                try {
+                    serverSocket.close();  // Ensure the server socket is closed when shutting down
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 
@@ -37,8 +56,8 @@ public class FileServer {
             try (DataInputStream dis = new DataInputStream(socket.getInputStream());
                  DataOutputStream dos = new DataOutputStream(socket.getOutputStream())) {
 
-                String action = dis.readUTF(); // Read action (upload/download/list/remove)
-                
+                String action = dis.readUTF(); // Read action (upload/download/list/remove/shutdown)
+
                 switch (action.toLowerCase()) {
                     case "upload":
                         receiveFile(dis, dos);  // Handle file upload
@@ -51,6 +70,9 @@ public class FileServer {
                         break;
                     case "remove":
                         removeFile(dis, dos);  // Handle file removal
+                        break;
+                    case "shutdown":
+                        shutdownServer(dis, dos);  // Handle server shutdown
                         break;
                     default:
                         dos.writeUTF("Unknown action");
@@ -66,6 +88,19 @@ public class FileServer {
                 }
             }
         }
+
+        // Method to handle server shutdown
+        private void shutdownServer(DataInputStream dis, DataOutputStream dos) throws IOException {
+            System.out.println("Shutdown request received from client.");
+            dos.writeUTF("Server is shutting down...");
+            isRunning = false;  // Stop the server's main loop
+            try {
+                serverSocket.close();  // Close the server socket immediately to stop accepting new clients
+            } catch (IOException e) {
+                System.err.println("Error closing server socket.");
+            }
+        }
+
 
         // Method to handle file upload (same as before)
         // Method to handle file upload
