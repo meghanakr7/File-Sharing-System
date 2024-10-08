@@ -1,5 +1,6 @@
 import java.io.*;
 import java.net.Socket;
+import java.util.Scanner;
 
 public class FileClient {
 
@@ -7,31 +8,85 @@ public class FileClient {
     private static final int SERVER_PORT = 5001;
 
     public static void main(String[] args) {
-        // Specify the full path of the file to be uploaded
-        String filePath = "client_files/sample.txt";  // Update this with the actual file path
+        Scanner scanner = new Scanner(System.in);
+        
+        System.out.println("Enter 'upload' to upload a file or 'download' to download a file:");
+        String action = scanner.nextLine();
 
-        try (Socket socket = new Socket(SERVER_HOST, SERVER_PORT)) {
-            System.out.println("Connected to the server");
+        if (action.equalsIgnoreCase("upload")) {
+            uploadFile();
+        } else if (action.equalsIgnoreCase("download")) {
+            downloadFile();
+        } else {
+            System.out.println("Unknown action.");
+        }
 
-            // Automatically extract the file name from the file path
+        scanner.close();
+    }
+
+    // Method to handle file upload
+    private static void uploadFile() {
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Enter the file path to upload:");
+        String filePath = scanner.nextLine();
+        scanner.close();
+
+        try (Socket socket = new Socket(SERVER_HOST, SERVER_PORT);
+             DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+             FileInputStream fis = new FileInputStream(filePath)) {
+
+            // Send upload request
+            dos.writeUTF("upload");
+
             File file = new File(filePath);
-            String fileName = file.getName(); // Extracting the file name
+            String fileName = file.getName();
 
-            // Send file name and file content to the server
-            try (DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
-                 FileInputStream fis = new FileInputStream(file)) {
+            dos.writeUTF(fileName); // Send file name to the server
 
-                dos.writeUTF(fileName); // Send file name to the server
+            byte[] buffer = new byte[4096];
+            int bytesRead;
 
-                byte[] buffer = new byte[4096];
-                int bytesRead;
+            // Read the file and send it to the server
+            while ((bytesRead = fis.read(buffer)) > 0) {
+                dos.write(buffer, 0, bytesRead);
+            }
 
-                // Read the file and send it to the server
-                while ((bytesRead = fis.read(buffer)) > 0) {
-                    dos.write(buffer, 0, bytesRead);
+            System.out.println("File " + fileName + " uploaded successfully.");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Method to handle file download
+    private static void downloadFile() {
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Enter the file name to download:");
+        String fileName = scanner.nextLine();
+        scanner.close();
+
+        try (Socket socket = new Socket(SERVER_HOST, SERVER_PORT);
+             DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+             DataInputStream dis = new DataInputStream(socket.getInputStream())) {
+
+            // Send download request
+            dos.writeUTF("download");
+            dos.writeUTF(fileName); // Send file name to the server
+
+            String serverResponse = dis.readUTF();  // Check if file exists
+            if ("File found".equals(serverResponse)) {
+                try (FileOutputStream fos = new FileOutputStream("client_files/" + fileName)) {
+                    byte[] buffer = new byte[4096];
+                    int bytesRead;
+
+                    // Receive the file from the server and save it locally
+                    while ((bytesRead = dis.read(buffer)) > 0) {
+                        fos.write(buffer, 0, bytesRead);
+                    }
+                    System.out.println("File " + fileName + " downloaded successfully.");
                 }
-
-                System.out.println("File " + fileName + " uploaded successfully.");
+            } else {
+                int errorCode = dis.readInt();  // Get error code
+                System.err.println("Error: File not found. Error code: " + errorCode);
             }
         } catch (IOException e) {
             e.printStackTrace();
